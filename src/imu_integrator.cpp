@@ -1,12 +1,16 @@
-#include "Imu_Integrator/imu_integrator.h"
+#include "imu_integrator/imu_integrator.h"
 
 ImuIntegrator::ImuIntegrator(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
     : nh_(nh), nh_private_(nh_private)
 {
     imu_sub = nh_.subscribe("/imu_raw", 1000, &ImuIntegrator::imu_callback, this);
+    vehicle_odom_sub = nh_.subscribe("/lgsvl/vehicle_odom", 100, &ImuIntegrator::vehicle_odom_callback, this);
+
     imu_odometry = nh_.advertise<visualization_msgs::Marker>("/imu_odometry", 1000);
     
-    ROS_INFO("Starting to subcribe imu data.\n");
+    ROS_INFO("Starting to subscribe imu data.\n");
+    ROS_INFO("Starting to subscribe lgsvl vehicle state.\n");
+
     fisrtTime = true;
     Eigen::Vector3d zero(0, 0, 0);
     pose.pos = zero;
@@ -21,7 +25,7 @@ ImuIntegrator::ImuIntegrator(const ros::NodeHandle& nh, const ros::NodeHandle& n
     path.ns = "points_and_lines";
     path.action = visualization_msgs::Marker::ADD;
     path.pose.orientation.w = 1.0;
-    path.scale.x = 0.4;
+    path.scale.x = 0.3;
     geometry_msgs::Point p;
     p.x = 0; p.y = 0; p.z = 0;
     path.points.push_back(p);
@@ -55,6 +59,13 @@ void ImuIntegrator::imu_callback(const sensor_msgs::ImuConstPtr& msg)
     }
 }
 
+void ImuIntegrator::vehicle_odom_callback(const lgsvl_msgs::VehicleOdometryPtr& msg)
+{
+    v_speed = msg->velocity;
+    // Eigen::Vector3d vv(v_speed, 0, 0);
+    // std::cout << vv << std::endl;
+}
+
 void ImuIntegrator::setGravity(const geometry_msgs::Vector3& msg)
 {
     gravity[0] = msg.x;
@@ -81,9 +92,14 @@ void ImuIntegrator::calcPosition(const geometry_msgs::Vector3& msg)
 {
     Eigen::Vector3d acc_1(msg.x, msg.y, msg.z);
     Eigen::Vector3d acc_g = pose.orientation * acc_1;
-    velocity = velocity + dt * (acc_g - gravity);
-    pose.pos = pose.pos + dt * velocity;
+    
+    // calculate velocity from imu linear acceleration, then get imu position
+    // velocity = velocity + dt * (acc_g - gravity);
+    // pose.pos = pose.pos + dt * velocity;
 
+    // get speed from /lgsvl/vehicle_odom, then calculate imu position
+    Eigen::Vector3d speed(v_speed, 0, 0);
+    pose.pos = pose.pos + dt * pose.orientation * speed;
 } 
 
 void ImuIntegrator::publishMessage()

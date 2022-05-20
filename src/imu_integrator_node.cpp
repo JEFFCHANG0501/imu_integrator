@@ -1,4 +1,4 @@
-#include "Imu_Integrator/imu_integrator.h"
+#include "imu_integrator/imu_integrator.h"
 
 int main(int argc, char** argv)
 {
