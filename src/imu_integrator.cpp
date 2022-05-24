@@ -94,12 +94,14 @@ void ImuIntegrator::calcPosition(const geometry_msgs::Vector3& msg)
     Eigen::Vector3d acc_g = pose.orientation * acc_1;
     
     // calculate velocity from imu linear acceleration, then get imu position
-    // velocity = velocity + dt * (acc_g - gravity);
-    // pose.pos = pose.pos + dt * velocity;
+    velocity = velocity + dt * (acc_g - gravity);
+    Eigen::Vector3d vel(velocity[0], 0, 0);
+    pose.pos = pose.pos + dt * pose.orientation * vel;
+    // std::cout << vel << std::endl << std::endl;
 
     // get speed from /lgsvl/vehicle_odom, then calculate imu position
-    Eigen::Vector3d speed(v_speed, 0, 0);
-    pose.pos = pose.pos + dt * pose.orientation * speed;
+    // Eigen::Vector3d speed(v_speed, 0, 0);
+    // pose.pos = pose.pos + dt * pose.orientation * speed;
 } 
 
 void ImuIntegrator::publishMessage()
